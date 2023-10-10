@@ -3,12 +3,14 @@ package mysql
 import (
 	"database/sql"
 
+	"github.com/atom-providers/app"
 	"github.com/atom-providers/log"
 	"github.com/rogeecn/atom/container"
 	"github.com/rogeecn/atom/utils/opt"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 )
 
@@ -19,7 +21,7 @@ func Provide(opts ...opt.Option) error {
 		return err
 	}
 
-	return container.Container.Provide(func() (*gorm.DB, error) {
+	return container.Container.Provide(func(app *app.Config) (*gorm.DB, error) {
 		if err := createMySQLDatabase(conf.EmptyDsn(), "mysql", conf.CreateDatabaseSql()); err != nil {
 			return nil, err
 		}
@@ -30,12 +32,18 @@ func Provide(opts ...opt.Option) error {
 			SkipInitializeWithVersion: false,      // 根据版本自动配置
 		}
 
+		l := &Logger{Level: logger.Warn}
+		if app.IsDevMode() {
+			l.Level = logger.Info
+		}
+
 		gormConfig := gorm.Config{
 			NamingStrategy: schema.NamingStrategy{
 				TablePrefix:   conf.Prefix,
 				SingularTable: conf.Singular,
 			},
 			DisableForeignKeyConstraintWhenMigrating: true,
+			Logger:                                   l,
 		}
 
 		// TODO: config logger
